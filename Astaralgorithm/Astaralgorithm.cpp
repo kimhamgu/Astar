@@ -19,6 +19,13 @@ HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
 
+// >> : 0727
+#define MAX_LOADSTRING 100
+#define PI 3.141592
+#define degreeToRadian(degree) ((degree) *PI / 180)
+void aroundDraw(HDC hdc, POINT startNums, POINT endPoint, HBRUSH hBrush, HBRUSH oldBrush, priority_queue<PQNode, vector<PQNode>, greater<PQNode>>  Fvalue);
+// << : 0727
+
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -128,7 +135,7 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 void DrawRectangle(HDC hdc, POINT point);
 double LengthPts(POINT rect, POINT startorend);
 bool InRect(POINT rect, POINT startorend);
-void DrawMapAndFillStartEnd(HDC hdc, POINT rectPoint, POINT Start, POINT drawStart, POINT End, POINT drawEnd, HBRUSH hBrush, HBRUSH oldBrush, int value);
+void DrawMapAndFillStartEnd(HDC hdc, POINT rectPoint, POINT Start, POINT drawStart, POINT End, POINT drawEnd, int value, priority_queue<PQNode, vector<PQNode>, greater<PQNode>>  Fvalue);
 // << : 0726
 
 #ifdef UNICODE
@@ -255,6 +262,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     static POINT drawStart;
     static POINT drawEnd;
     static int value;
+    static priority_queue<int, vector<int>, greater<int>>  Fvalue;
 
     switch (message)
     {
@@ -310,14 +318,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             TCHAR str[3];
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
             
-            hBrush = CreateSolidBrush(RGB(255, 255, 255));
-            oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+            /*hBrush = CreateSolidBrush(RGB(255, 255, 255));
+            oldBrush = (HBRUSH)SelectObject(hdc, hBrush);*/
 
-            DrawMapAndFillStartEnd(hdc, rectPoint, Start, drawStart, End, drawEnd, hBrush, oldBrush, value);
+            DrawMapAndFillStartEnd(hdc, rectPoint, Start, drawStart, End, drawEnd, value,Fvalue);
 
-            value = 10;
+            /*value = 10;
             wsprintf(str, TEXT("%d"), value);
-            TextOut(hdc, 75, 75, str, lstrlen(str));
+            TextOut(hdc, 75, 75, str, lstrlen(str));*/
+            //InvalidateRect(hWnd, NULL, false);//새 이벤트 불러오기
 
             EndPaint(hWnd, &ps);
         }
@@ -356,47 +365,75 @@ void DrawRectangle(HDC hdc, POINT point)
     Rectangle(hdc, point.x - 40, point.y - 40, point.x + 40, point.y + 40);
 }
 
-void DrawMapAndFillStartEnd(HDC hdc, POINT rectPoint, POINT Start, POINT drawStart, POINT End, POINT drawEnd, HBRUSH hBrush, HBRUSH oldBrush, int value)
+
+
+void DrawMapAndFillStartEnd(HDC hdc, POINT rectPoint, POINT Start, POINT drawStart, POINT End, POINT drawEnd, int value, priority_queue<PQNode, vector<PQNode>, greater<PQNode>>  Fvalue)
 {
+    static bool startOK = false;
+    static bool endOK = false;
+
+    HBRUSH hBrush = CreateSolidBrush(RGB(255, 255, 255));
+    HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+
     for (int j = 0; j < 5; j++)
     {
         for (int i = 0; i < 5; i++)
         {
             DrawRectangle(hdc, rectPoint);
-            rectPoint.x += 79;
+            rectPoint.x += 81;
             
             if (InRect(rectPoint, Start))
             {
                 cout << "스타트";
-
                 drawStart = rectPoint;
+                startOK = true;
             }
             if (InRect(rectPoint, End))
             {
                 cout << "엔드";
-
                 drawEnd = rectPoint;
+                endOK = true;
             }
         }
         rectPoint.x = 100;
-        rectPoint.y += 79;
+        rectPoint.y += 80;
     }
 
-    hBrush = CreateSolidBrush(RGB(0, 051, 153));
-    oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
-    DrawRectangle(hdc, drawStart);
-    SelectObject(hdc, oldBrush);
-    DeleteObject(hBrush);
+    if (startOK) //start 그리기.
+    {
+        hBrush = CreateSolidBrush(RGB(0, 051, 153));
+        oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+        DrawRectangle(hdc, drawStart);
+        SetTextAlign(hdc, TA_CENTER);
+        TextOut(hdc, drawStart.x, drawStart.y - 10, TEXT("S"), 1);
+        SelectObject(hdc, oldBrush);
+        DeleteObject(hBrush);
+    }
+    
+    if (endOK) //end 그리기.
+    {
+        hBrush = CreateSolidBrush(RGB(153, 0, 0));
+        oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+        DrawRectangle(hdc, drawEnd);
+        SetTextAlign(hdc, TA_CENTER);
+        TextOut(hdc, drawEnd.x, drawEnd.y - 10, TEXT("E"), 1);
+        SelectObject(hdc, oldBrush);
+        DeleteObject(hBrush);
+    }
 
-    hBrush = CreateSolidBrush(RGB(153, 0, 0));
-    oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
-    DrawRectangle(hdc, drawEnd);
-    SelectObject(hdc, oldBrush);
-    DeleteObject(hBrush);
+    if (startOK == true && endOK == true)
+    {
+        //주변 초록. 0727
+        aroundDraw(hdc, drawStart, drawEnd, hBrush, oldBrush,Fvalue);
+    }
+   
 }
 
 double LengthPts(POINT rect, POINT startorend)
 {
+    /*startorend.x = (startorend.x - 60) / 80;
+    startorend.y = (startorend.y - 60) / 80;
+    return*/ 
     return(sqrt((float)(startorend.x - rect.x) * (startorend.x - rect.x) + (startorend.y - rect.y) * (startorend.y - rect.y)));
 }
 
@@ -407,3 +444,252 @@ bool InRect(POINT rect, POINT startorend)
     else
         return false;
 }
+
+struct PQNode
+{
+    POINT idx;//uPos
+
+    int Gvalue;
+    int Fvalue;
+};
+
+void aroundDraw(POINT startNums, POINT endPoint)
+{
+    priority_queue<PQNode, vector<PQNode>, greater<PQNode>>  pq;
+    vector<vector<int> > best(5, vector<int>(5, INT32_MAX)); // 5x5 5칸 만들고, 그 안을 vector<int>(5,0)으로 채운다  vector<int>(5,0) : vector를 5칸 만들고, 그 안을 0으로 채운다.
+    //INT32_MAX 인트가 가질 수 있는 최대값. 처음 넣었을때 비교할 값을 넣어주기 위해.
+
+    vector<vector<bool> > close(5, vector<bool>(5, false));
+
+    POINT around[] =
+    {   
+        {0, -1},    // UP
+        {0,1},      // DOWN
+        {1,0},      // RIGHT
+        {-1,0},     // LEFT
+        {1,-1},     // RIGHT UP
+        {-1,-1},    // LEFT UP
+        {1,1},      // RIGHT DOWN
+        {-1,1}      // LEFT DOWN
+    };
+
+    int cost[] = //G값에 더해주는
+    {
+        10,
+        10,
+        10,
+        10,
+        14,
+        14,
+        14,
+        14,
+    };
+
+    enum Dir
+    {
+         UP,
+         DOWN,
+         RIGHT,
+         LEFT,
+         RIGHTUP,
+         LEFTUP,
+         RIGHTDOWN,
+         LEFTDOWN,
+         END,
+    };
+
+    POINT start = { startNums.x,startNums.y };
+    POINT dest = { endPoint.x,endPoint.y };
+
+    int Hvalue = 10 * abs(start.x - dest.x) + 10 * abs(start.y - dest.y);
+    int Gvalue = 0;
+    int Fvalue = Hvalue + Gvalue;
+
+    PQNode node = { startNums, Gvalue, Fvalue };
+
+
+    map<POINT, POINT> parent; //어디서 왔는지.
+    parent[start] = start; //초기화, (parent의 parent는 자기자신.)
+
+    pq.push(node); // 초기화.
+
+    while (pq.empty()!=true)
+    {
+
+    }
+
+
+    struct Node
+    {
+        POINT point[9] = {};
+        int G[9] = { 0 };
+        int H[9] = { 0 };
+        int F[9] = { 0 };
+    };
+
+    while (!Fvalue.empty()) //Fvalue 비우기. 0727
+    {
+        Fvalue.pop();
+    }
+
+    Node Astar;
+    TCHAR str[128];
+    double angle = 360 / 8;
+    angle = degreeToRadian(angle);
+    POINT point[9] = {};
+    POINT maxF;
+
+    for (int i = 0; i < 8; i++)
+    {
+        if (i % 2 == 0)
+        {
+            Astar.G[i] += 10;
+
+            Astar.point[i].x = startNums.x + 80 * sin(angle * i);
+            Astar.point[i].y = startNums.y + 80 * cos(angle * i);
+
+            if (((abs(-(Astar.point[i].x - endPoint.x)) / 79) == (abs(-(Astar.point[i].y - endPoint.y)) / 80)))
+            {
+                Astar.H[i] += 14 * (abs(-(Astar.point[i].x - endPoint.x)) / 79);
+            }
+
+            if (((abs(-(Astar.point[i].x - endPoint.x)) / 79) > (abs(-(Astar.point[i].y - endPoint.y)) / 80)))
+            {
+                Astar.H[i] += 14 * (abs(-(Astar.point[i].y - endPoint.y)) / 80);
+
+                Astar.H[i] += 10 * ((abs(-(Astar.point[i].x - endPoint.x)) / 79) - (abs(-(Astar.point[i].y - endPoint.y)) / 80));
+            }
+
+            if (((abs(-(Astar.point[i].x - endPoint.x)) / 79) < (abs(-(Astar.point[i].y - endPoint.y)) / 80)))
+            {
+                Astar.H[i] += 14 * (abs(-(Astar.point[i].x - endPoint.x)) / 79);
+
+                Astar.H[i] += 10 * ((abs(-(Astar.point[i].y - endPoint.y)) / 80) - (abs(-(Astar.point[i].x - endPoint.x)) / 79));
+
+                //std::cout << Astar.point[i].x << "," << Astar.point[i].y;
+            }
+
+            Astar.F[i] = Astar.G[i] + Astar.H[i];
+
+            Fvalue.push(Astar.F[i]);
+
+            /*Astar.H[i] += 10 * (abs(Astar.point[i].x - endPoint.x) / 80) ;
+            Astar.H[i] += 14 * (abs(Astar.point[i].y - endPoint.y) / 80) ;*/
+
+            /*hBrush = CreateSolidBrush(RGB(0, 153, 0));
+            oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+            DrawRectangle(hdc, Astar.point[i]);*/
+            
+            //TextOut(hdc, Astar->point[i].x, Astar->point[i].y - 10, TEXT("test"), 4);
+            SetTextAlign(hdc, TA_CENTER);
+            wsprintf(str, TEXT("%d"), Astar.G[i]);
+            TextOut(hdc, Astar.point[i].x - 15, Astar.point[i].y - 20, str, lstrlen(str));
+
+            SetTextAlign(hdc, TA_CENTER);
+            wsprintf(str, TEXT("%d"), Astar.H[i]);
+            TextOut(hdc, Astar.point[i].x + 15, Astar.point[i].y - 20, str, lstrlen(str));
+
+            SetTextAlign(hdc, TA_CENTER);
+            wsprintf(str, TEXT("%d"), Astar.F[i]);
+            TextOut(hdc, Astar.point[i].x, Astar.point[i].y + 20, str, lstrlen(str));
+
+            //SelectObject(hdc, oldBrush);
+           // DeleteObject(hBrush);
+
+        }
+
+        if (i % 2 == 1)
+        {
+            Astar.G[i] += 14;
+
+            Astar.point[i].x = startNums.x + sqrt(pow(80, 2)+ pow(80, 2)) * sin(angle * i);
+            Astar.point[i].y = startNums.y + sqrt(pow(80, 2) + pow(80, 2)) * cos(angle * i);
+
+            if (((abs(-(Astar.point[i].x - endPoint.x)) / 79) == (abs(-(Astar.point[i].y - endPoint.y)) / 80)))
+            {
+                Astar.H[i] += 14 * (abs(-(Astar.point[i].x - endPoint.x)) / 79);
+            }
+
+            if (((abs(-(Astar.point[i].x - endPoint.x)) / 79) > (abs(-(Astar.point[i].y - endPoint.y)) / 80)))
+            {
+                Astar.H[i] += 14 * (abs(-(Astar.point[i].y - endPoint.y)) / 80);
+
+                Astar.H[i] += 10 * ((abs(-(Astar.point[i].x - endPoint.x)) / 79) - (abs(-(Astar.point[i].y - endPoint.y)) / 80));
+            }
+
+            if (((abs(-(Astar.point[i].x - endPoint.x)) / 79) < (abs(-(Astar.point[i].y - endPoint.y)) / 80)))
+            {
+                Astar.H[i] += 14 * (abs(-(Astar.point[i].x - endPoint.x)) / 79);
+
+                Astar.H[i] += 10 * ((abs(-(Astar.point[i].y - endPoint.y)) / 80) - (abs(-(Astar.point[i].x - endPoint.x)) / 79));
+
+                std::cout << Astar.point[i].x << "," << Astar.point[i].y;
+            }
+
+            Astar.F[i] = Astar.G[i] + Astar.H[i];
+            Fvalue.push(Astar.F[i]);
+
+           /* hBrush = CreateSolidBrush(RGB(0, 153, 0));
+            oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+            DrawRectangle(hdc, Astar.point[i]);*/
+
+            SetTextAlign(hdc, TA_CENTER);
+            wsprintf(str, TEXT("%d"), Astar.G[i]);
+            TextOut(hdc, Astar.point[i].x - 15, Astar.point[i].y - 20, str, lstrlen(str));
+
+            SetTextAlign(hdc, TA_CENTER);
+            wsprintf(str, TEXT("%d"), Astar.H[i]);
+            TextOut(hdc, Astar.point[i].x + 15, Astar.point[i].y - 20, str, lstrlen(str));
+
+            SetTextAlign(hdc, TA_CENTER);
+            wsprintf(str, TEXT("%d"), Astar.F[i]);
+            TextOut(hdc, Astar.point[i].x, Astar.point[i].y + 20, str, lstrlen(str));
+
+            SelectObject(hdc, oldBrush);
+            DeleteObject(hBrush);
+        }
+    }
+
+    for (int i = 0; i < 8; i++)
+    {
+        if (Astar.F[i] == Fvalue.top())
+        {
+            if (Astar.point[i].x + 1 == endPoint.x)
+            {
+                if (Astar.point[i].y == endPoint.y)
+                {
+                    cout << "stop";
+
+                    break;
+                }
+            }
+
+            maxF = Astar.point[i];
+            Sleep(1000);
+
+            hBrush = CreateSolidBrush(RGB(0, 153, 0));
+            oldBrush = (HBRUSH)SelectObject(hdc, hBrush);
+            DrawRectangle(hdc, Astar.point[i]);
+            SelectObject(hdc, oldBrush);
+            DeleteObject(hBrush);
+
+            aroundDraw(hdc, maxF, endPoint, hBrush, oldBrush, Fvalue);
+
+            /*SetTextAlign(hdc, TA_CENTER);
+            wsprintf(str, TEXT("%d"), Astar.G[i]);
+            TextOut(hdc, Astar.point[i].x - 15, Astar.point[i].y - 20, str, lstrlen(str));
+
+            SetTextAlign(hdc, TA_CENTER);
+            wsprintf(str, TEXT("%d"), Astar.H[i]);
+            TextOut(hdc, Astar.point[i].x + 15, Astar.point[i].y - 20, str, lstrlen(str));
+
+            SetTextAlign(hdc, TA_CENTER);
+            wsprintf(str, TEXT("%d"), Astar.F[i]);
+            TextOut(hdc, Astar.point[i].x, Astar.point[i].y + 20, str, lstrlen(str));*/
+
+            
+        }
+    }
+
+}
+
